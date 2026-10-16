@@ -15,3 +15,7 @@ The paper texture (assets/paper.png, a 1024x1024 crop of textured_paper.png) is 
 Changes: the grid bias is 1.0, so black pixels carry no grid.
 
 slot itself is GNU General Public License version 3 or later, which these licenses permit.
+
+sharp-shimmerless and sharp-shimmerless-grid by zadpos, from the Sharp-Shimmerless-Shader collection. Public domain.
+Changes: ported to slot's single game pass, with the output pixel read from the picture rectangle instead of the RetroArch view.
+Grid weights follow the area of the left game pixel still inside the grid line, which the original rounds up to the whole line. The grid is 0.3 thick at 0.3 opacity, the original defaults.

@@ -505,6 +505,8 @@ impl Frontend {
             slot_store::Shader::Grid => ScreenEffect::Grid,
             slot_store::Shader::Dot => ScreenEffect::Dot,
             slot_store::Shader::Simpletex => ScreenEffect::Simpletex,
+            slot_store::Shader::Sharp => ScreenEffect::Sharp,
+            slot_store::Shader::SharpGrid => ScreenEffect::SharpGrid,
         });
         compositor.set_shake(self.session.app().screen_shake());
         compositor.set_screen_power(self.session.app().screen_power());

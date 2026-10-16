@@ -204,6 +204,8 @@ fn the_values_read_as_the_menu_prints_them() {
             "Grid",
             "Dot",
             "Simpletex",
+            "Sharp",
+            "Sharp Grid",
             "1 Frame",
             "Dark",
             "Light",

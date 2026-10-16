@@ -429,7 +429,11 @@ fn each_platform_keeps_its_own_shader_wraps_and_starts_on_grid_and_simpletex() {
     );
     for (btn, want, shown) in [
         (Btn::Right, Shader::Dot, QuickValue::Dot),
+        (Btn::Right, Shader::Sharp, QuickValue::Sharp),
+        (Btn::Right, Shader::SharpGrid, QuickValue::SharpGrid),
         (Btn::Right, Shader::Off, QuickValue::Off),
+        (Btn::Left, Shader::SharpGrid, QuickValue::SharpGrid),
+        (Btn::Left, Shader::Sharp, QuickValue::Sharp),
         (Btn::Left, Shader::Dot, QuickValue::Dot),
         (Btn::Left, Shader::Grid, QuickValue::Grid),
         (Btn::Left, Shader::Lcd3x, QuickValue::Lcd3x),

@@ -219,7 +219,26 @@ impl GamePass {
             gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_2D, tex);
         }
+        let previous_filters = if self.effect.linear() {
+            Some(unsafe {
+                let mut min_filter = gl::NEAREST as gl::types::GLint;
+                let mut mag_filter = gl::NEAREST as gl::types::GLint;
+                gl::GetTexParameteriv(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, &mut min_filter);
+                gl::GetTexParameteriv(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, &mut mag_filter);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as gl::types::GLint);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as gl::types::GLint);
+                (min_filter, mag_filter)
+            })
+        } else {
+            None
+        };
         quad.draw();
+        if let Some((min_filter, mag_filter)) = previous_filters {
+            unsafe {
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, min_filter);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, mag_filter);
+            }
+        }
     }
 }
 
