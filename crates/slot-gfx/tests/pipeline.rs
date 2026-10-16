@@ -781,3 +781,133 @@ fn the_dot_shader_keeps_a_white_screen_a_little_over_half_lit() {
         "a white cell averages {mean} under the dot shader"
     );
 }
+
+fn sharp_frame(
+    c: &mut Compositor,
+    effect: ScreenEffect,
+    window: (u32, u32),
+    shot: &[u8],
+) -> (Vec<u8>, usize, usize) {
+    c.fit(window);
+    c.set_screen_effect(effect);
+    c.set_screen_power(1.0);
+    c.begin_frame(slot_gfx::Layout::Framed);
+    c.upload_game(shot);
+    c.draw_game();
+    let (w, h) = canvas_size(window);
+    (c.read_frame(), w as usize, h as usize)
+}
+
+fn column_shot(grey: impl Fn(usize) -> u8) -> Vec<u8> {
+    (0..SRC_H as usize)
+        .flat_map(|_| (0..SRC_W as usize).map(|x| grey(x)))
+        .flat_map(|g| [g, g, g, 255])
+        .collect()
+}
+
+fn green_row(frame: &[u8], w: usize, y: usize) -> Vec<f32> {
+    (0..w).map(|x| frame[(y * w + x) * 4 + 1] as f32 / 255.0).collect()
+}
+
+#[test]
+fn sharp_keeps_a_flat_screen_flat() {
+    let Some((_g, _s, mut c)) = compositor() else {
+        return;
+    };
+    let (frame, w, h) = sharp_frame(
+        &mut c,
+        ScreenEffect::Sharp,
+        (OUT_W, OUT_H),
+        &flat_shot([0xc0, 0xc0, 0xc0]),
+    );
+    for y in (0..h).step_by(7) {
+        for x in (0..w).step_by(5) {
+            let got = px(&frame, x, y);
+            assert!(
+                got.iter().all(|ch| ch.abs_diff(0xc0) <= 1),
+                "({x}, {y}) came out {got:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn sharp_draws_whole_scale_game_pixels_as_clean_blocks() {
+    let Some((_g, _s, mut c)) = compositor() else {
+        return;
+    };
+    let shot = column_shot(|x| if x % 2 == 0 { 0xff } else { 0x00 });
+    let (frame, w, h) = sharp_frame(&mut c, ScreenEffect::Sharp, (OUT_W, OUT_H), &shot);
+    for y in [0, h / 2, h - 1] {
+        for x in 0..w {
+            let want = if (x / 3) % 2 == 0 { 0xff } else { 0x00 };
+            let got = px(&frame, x, y)[1];
+            assert!(
+                got.abs_diff(want) <= 2,
+                "column {x} on row {y} is {got}, a clean block wants {want}"
+            );
+        }
+    }
+}
+
+#[test]
+fn sharp_gives_a_lone_pixel_the_same_light_wherever_it_lands() {
+    let Some((_g, _s, mut c)) = compositor() else {
+        return;
+    };
+    let stretched = (640, 480);
+    let want = stretched.0 as f32 / SRC_W as f32;
+    for column in [100, 101, 102, 103] {
+        let shot = column_shot(|x| if x == column { 0xff } else { 0x00 });
+        let (frame, w, h) = sharp_frame(&mut c, ScreenEffect::Sharp, stretched, &shot);
+        let light: f32 = green_row(&frame, w, h / 2).iter().sum();
+        assert!(
+            (light - want).abs() < 0.08,
+            "a lone game pixel at {column} lit {light} output pixels, an even box filter lights {want}"
+        );
+    }
+}
+
+#[test]
+fn sharp_grid_dims_the_last_third_of_every_game_pixel_at_3x() {
+    let Some((_g, _s, mut c)) = compositor() else {
+        return;
+    };
+    let (frame, w, h) = sharp_frame(
+        &mut c,
+        ScreenEffect::SharpGrid,
+        (OUT_W, OUT_H),
+        &flat_shot([0xc0, 0xc0, 0xc0]),
+    );
+    let line = 0.73;
+    for y in (3..h - 3).step_by(2) {
+        for x in (3..w - 3).step_by(2) {
+            let factor = [x % 3 == 2, y % 3 == 2]
+                .iter()
+                .fold(1.0, |f, &on| if on { f * line } else { f });
+            let want = 0xc0 as f32 * factor;
+            let got = px(&frame, x, y)[1] as f32;
+            assert!(
+                (got - want).abs() <= 3.0,
+                "({x}, {y}) is {got}, the grid wants {want}"
+            );
+        }
+    }
+}
+
+#[test]
+fn the_sharp_effects_leave_the_games_own_texture_nearest_afterwards() {
+    let Some((_g, _s, mut c)) = compositor() else {
+        return;
+    };
+    let shot = column_shot(|x| if x % 2 == 0 { 0xff } else { 0x00 });
+    sharp_frame(&mut c, ScreenEffect::Sharp, (OUT_W, OUT_H), &shot);
+    let (frame, w, h) = sharp_frame(&mut c, ScreenEffect::None, (OUT_W, OUT_H), &shot);
+    for x in 0..w {
+        let got = px(&frame, x, h / 2)[1];
+        assert!(
+            got <= 1 || got >= 254,
+            "column {x} came out {got}: the game texture was left blending"
+        );
+    }
+}

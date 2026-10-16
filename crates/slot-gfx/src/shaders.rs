@@ -72,12 +72,50 @@ vec2 grid_band(vec2 x) {
 float dot_weight(vec2 f, vec2 o, float bloom) {
     return exp(-4.0 * length(f - (o + vec2(0.5))) * bloom);
 }
+const vec2 sharp_grid_thick = vec2(0.3);
+const vec2 sharp_grid_opacity = vec2(0.3);
+vec3 sharp_shimmerless(bool lines) {
+    vec2 out_px = u_rect.zw * u_fbo;
+    vec2 invscale = u_uv.zw * u_src / out_px;
+    vec2 tl = u_uv.xy * u_src + (v_uv * out_px - 0.5) * invscale;
+    vec2 br = tl + invscale;
+    vec2 texel_tl = floor(tl);
+    vec2 texel_br = floor(br);
+    vec2 same = step(texel_br, texel_tl);
+    vec2 at;
+    float factor = 1.0;
+    if (lines) {
+        vec2 ratio = 1.0 - sharp_grid_thick;
+        vec2 alpha = 1.0 - sharp_grid_opacity;
+        vec2 ftl = fract(tl);
+        vec2 fbr = fract(br);
+        vec2 area_tl = mix(ratio - ftl + alpha * (1.0 - ratio), alpha * (1.0 - ftl), step(ratio, ftl));
+        vec2 area_br = mix(fbr, ratio + alpha * (fbr - ratio), step(ratio, fbr));
+        vec2 interp = area_br / max(area_tl + area_br, vec2(1e-4));
+        interp = mix(interp, vec2(1.0), same);
+        vec2 lit = (fbr + clamp(ratio - ftl, 0.0, 1.0)) / invscale;
+        lit = mix(lit, ratio / invscale, step(ratio, fbr));
+        lit = mix(lit, clamp((ratio - ftl) / invscale, 0.0, 1.0), same);
+        lit = alpha + (1.0 - alpha) * lit;
+        factor = lit.x * lit.y;
+        at = texel_br - 0.5 + interp;
+    } else {
+        vec2 right = mix((br - texel_br) / invscale, vec2(1.0), same);
+        at = texel_br - 0.5 + right;
+    }
+    return factor * texture2D(u_game, at / u_src).rgb;
+}
 void main() {
     vec2 uv = u_uv.xy + v_uv * u_uv.zw;
     vec2 f = fract(uv * u_src);
-    vec3 c = texture2D(u_game, uv).rgb;
+    vec3 c;
+    if (u_mode > 4.5) {
+        c = sharp_shimmerless(u_mode > 5.5);
+    } else {
+        c = texture2D(u_game, uv).rgb;
+    }
     bool inside = all(greaterThanEqual(uv, u_pic.xy)) && all(lessThan(uv, u_pic.zw));
-    if (!inside) {
+    if (!inside || u_mode > 4.5) {
     } else if (u_mode > 3.5) {
         c = pow(c, vec3(1.05));
         vec2 d = abs(f - 0.5);

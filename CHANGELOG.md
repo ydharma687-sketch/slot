@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Sharp and Sharp Grid screen shaders for GBA, GB and GBC, ports of sharp-shimmerless and sharp-shimmerless-grid by zadpos. They keep pixel edges crisp at any scale without shimmering while scrolling.
+
 ## [1.7.0](https://github.com/BrandonKowalski/slot/releases/tag/v1.7.0)
 
 - The slot, carts and shelf now have a skeuomorphic effect, with light and dark themes and bundled wallpapers. Huge thanks to Markus for this amazing work! (#74, @MarkusMaribu)

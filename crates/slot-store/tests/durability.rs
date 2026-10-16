@@ -292,6 +292,24 @@ fn the_quick_menu_settings_round_trip_as_their_own_lines() {
 }
 
 #[test]
+fn the_sharp_shaders_round_trip_on_every_platform() {
+    let d = tmp_root();
+    let s = SlotState {
+        clock_set: true,
+        shader_gba: Shader::SharpGrid,
+        shader_gb: Shader::Sharp,
+        shader_gbc: Shader::SharpGrid,
+        ..SlotState::default()
+    };
+    write_slot_state(d.path(), &s).unwrap();
+    assert_eq!(read_slot_state(d.path()), s);
+    let text = std::fs::read_to_string(d.path().join("Config/slot.state")).unwrap();
+    for line in ["shader_gba=sharp_grid", "shader_gb=sharp", "shader_gbc=sharp_grid"] {
+        assert!(text.lines().any(|l| l == line), "no {line} in {text:?}");
+    }
+}
+
+#[test]
 fn a_run_ahead_the_row_does_not_offer_reads_as_off() {
     let d = tmp_root();
     let s = SlotState {

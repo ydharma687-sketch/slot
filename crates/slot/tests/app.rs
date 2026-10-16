@@ -16,7 +16,7 @@ use slot_store::{write_slot_state, Cart, Core, Platform, SlotState};
 use slot_ui::{
     board_at, board_in, grown, lid_at, lid_from, on_board, opening, shelf_cart_at, Canvas, Draw,
     Icon, Placed, TexId, BOARD_W, CART_H, CART_W, CHIP_H, CHIP_U, CHIP_V, CHIP_W, HINT_EDGE,
-    LID_TURN, MOUTH_H, OUT_H, OUT_W, SLIDE_UP, SOCKET_H, SOCKET_U, SOCKET_V, SOCKET_W, TURN_PAD,
+    HINT_H, LID_TURN, SLIDE_UP, SOCKET_H, SOCKET_U, SOCKET_V, SOCKET_W, TURN_PAD,
 };
 
 fn play(a: &mut App) {
@@ -1344,24 +1344,18 @@ fn the_open_cart_rests_over_the_shelf_with_its_lid_turned() {
     let [cancel, swap, choose] = f.legend;
     let at = |tex| tex_at(&out, tex).expect("a legend hint is missing").1;
     let seen = |w: u32| (w - HINT_EDGE) as f32;
-    let y = OUT_H as f32 - MOUTH_H * 2.0;
-    assert_eq!(at(cancel.0), [234.0, y, cancel.1 as f32, MOUTH_H]);
+    assert_eq!(at(cancel.0), [180.0, 386.0, cancel.1 as f32, HINT_H as f32]);
     assert_eq!(
         at(swap.0)[0] + seen(swap.1) / 2.0,
-        OUT_W as f32 / 2.0,
+        360.0,
         "Swap is off the panel's centre"
     );
     assert_eq!(
-        at(choose.0)[0],
-        at(swap.0)[0] + seen(swap.1) + 24.0,
-        "Choose is not beside Swap"
+        at(choose.0)[0] + seen(choose.1),
+        540.0,
+        "Choose does not end at the cart's edge"
     );
-    assert_eq!(
-        at(cancel.0)[0] + seen(cancel.1) + 24.0,
-        at(swap.0)[0],
-        "Cancel is not beside Swap"
-    );
-    assert_eq!((at(swap.0)[1], at(choose.0)[1]), (y, y));
+    assert_eq!((at(swap.0)[1], at(choose.0)[1]), (386.0, 386.0));
 }
 
 #[test]
@@ -1982,6 +1976,32 @@ fn a_cart_with_no_line_reads_as_actual_size() {
 }
 
 #[test]
+fn the_power_menus_own_buttons_never_reach_the_game() {
+    let d = common::tmp_root_with_carts(&["Emerald", "Zzz"]);
+    let mut s = session_playing(d.path());
+    s.feed([RawEvent::Down(Btn::Power)], 1000);
+    s.feed([], 2100);
+    assert!(
+        s.app().power_menu().is_some(),
+        "the power menu never opened"
+    );
+    s.feed([RawEvent::Up(Btn::Power)], 2110);
+    s.feed([RawEvent::Down(Btn::Down)], 2200);
+    assert_eq!(
+        pad(&s) & ButtonMask::DOWN,
+        0,
+        "the press that moved the power menu's bar reached the game"
+    );
+    s.feed([RawEvent::Down(Btn::B)], 2300);
+    assert!(s.app().power_menu().is_none(), "B did not dismiss the menu");
+    assert_eq!(
+        pad(&s) & ButtonMask::B,
+        0,
+        "the B that cancelled the power menu was handed to the game underneath it"
+    );
+}
+
+#[test]
 fn a_chorded_select_never_reaches_the_pad() {
     let d = common::tmp_root_with_carts(&["Emerald", "Zzz"]);
     let mut s = session_playing(d.path());
@@ -2144,10 +2164,10 @@ fn a_game_boy_color_game_keeps_its_own_colour_and_shader() {
     );
     assert_eq!(
         (saved.shader_gb, saved.shader_gbc),
-        (Shader::Simpletex, Shader::Off),
+        (Shader::Simpletex, Shader::Sharp),
         "a Game Boy Color game's shader shortcut did not land on GBC alone"
     );
-    assert_eq!(s.app().screen_shader(), Shader::Off);
+    assert_eq!(s.app().screen_shader(), Shader::Sharp);
 }
 
 #[test]
@@ -2229,8 +2249,28 @@ fn the_shader_shortcut_steps_the_seated_carts_shader_both_ways_and_names_it() {
         ),
         (
             slot_input::Action::ShaderNext,
+            Shader::Sharp,
+            slot_ui::Toast::ShaderSharp,
+        ),
+        (
+            slot_input::Action::ShaderNext,
+            Shader::SharpGrid,
+            slot_ui::Toast::ShaderSharpGrid,
+        ),
+        (
+            slot_input::Action::ShaderNext,
             Shader::Off,
             slot_ui::Toast::ShaderOff,
+        ),
+        (
+            slot_input::Action::ShaderPrev,
+            Shader::SharpGrid,
+            slot_ui::Toast::ShaderSharpGrid,
+        ),
+        (
+            slot_input::Action::ShaderPrev,
+            Shader::Sharp,
+            slot_ui::Toast::ShaderSharp,
         ),
         (
             slot_input::Action::ShaderPrev,

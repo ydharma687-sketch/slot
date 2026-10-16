@@ -16,11 +16,17 @@ pub enum ScreenEffect {
     Grid,
     Dot,
     Simpletex,
+    Sharp,
+    SharpGrid,
 }
 
 impl ScreenEffect {
     pub fn mode(self) -> f32 {
         self as u8 as f32
+    }
+
+    pub fn linear(self) -> bool {
+        matches!(self, ScreenEffect::Sharp | ScreenEffect::SharpGrid)
     }
 }
 
